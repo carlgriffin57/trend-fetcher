@@ -4,7 +4,14 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-@app.route('/trend', methods=['GET'])
+@app.route('/')
+def home():
+    return jsonify({
+        "message": "Trend Fetcher is running",
+        "timestamp": datetime.utcnow().isoformat()
+    })
+
+@app.route('/trends', methods=['GET'])
 def get_trend():
     keyword = request.args.get('keyword', '')
     if not keyword:
@@ -21,20 +28,21 @@ def get_trend():
         return jsonify({"error": "No data found for keyword"}), 404
 
     values = data[keyword].tolist()
-    earliest, latest = values[0], values[-1]
-    growth = round(((latest - earliest) / earliest) * 100, 2) if earliest > 0 else 0
-    direction = "rising" if growth > 5 else "falling" if growth < -5 else "stable"
+    growth = values[-1] - values[0] if len(values) > 1 else 0
+    direction = "rising" if growth > 0 else "falling" if growth < 0 else "stable"
 
-    result = {
+    return jsonify({
         "keyword": keyword,
         "trend_direction": direction,
         "growth_rate": growth,
-        "search_volume_index": latest,
-        "timestamp": datetime.utcnow().isoformat() + "Z"
-    }
+        "search_volume": int(values[-1]),
+        "timestamp": datetime.utcnow().isoformat(),
+        "related_topics": "via pytrends"
+    })
 
-    return jsonify(result)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
 
-if __name__ == "__main__":
     from gunicorn.app.wsgiapp import run
     run()
+
